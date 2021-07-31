@@ -1,4 +1,4 @@
-
+// @ansty
 ////////////////////////////////////////////////////////////
 // Headers
 ////////////////////////////////////////////////////////////
@@ -80,8 +80,6 @@ public:
         glVertex3f(-m_size.x/2,  m_size.y/2, -m_size.z/2);
         glVertex3f( m_size.x/2,  m_size.y/2, -m_size.z/2);
         glVertex3f( m_size.x/2, -m_size.y/2, -m_size.z/2);
-        
-		glDrawArrays();
 		
 		glColor3f (float (m_color.r) / 255,
 		           float (m_color.g) / 255,
