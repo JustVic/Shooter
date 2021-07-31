@@ -1,0 +1,250 @@
+#include <SFML/Graphics.hpp>
+#include <SFML/Window.hpp>
+#include "SFML/OpenGL.hpp"
+#ifdef _DEBUG
+#pragma comment(lib,"sfml-graphics-d.lib")
+#pragma comment(lib,"sfml-audio-d.lib")
+#pragma comment(lib,"sfml-system-d.lib")
+#pragma comment(lib,"sfml-window-d.lib")
+#pragma comment(lib,"sfml-network-d.lib")
+#else
+#pragma comment(lib,"sfml-graphics.lib")
+#pragma comment(lib,"sfml-audio.lib")
+#pragma comment(lib,"sfml-system.lib")
+#pragma comment(lib,"sfml-window.lib")
+#pragma comment(lib,"sfml-network.lib")
+#endif
+#pragma comment(lib,"opengl32.lib")
+#pragma comment(lib,"glu32.lib")
+
+#include "SFML/Graphics.hpp"
+#include "SFML/OpenGL.hpp"
+#include <iostream>
+
+/*
+#include <GL/glu.h>
+#include <GL/gl.h>
+#include <thread>
+#include <iostream>
+*/
+ 
+#define __MOVE__ 10
+ 
+void InitGL();
+ 
+void ResizeWindow(GLsizei, GLsizei);
+ 
+void DrawScene();
+ 
+void LoadTextures(const char href[1024], const int &id);
+ 
+GLfloat xrot = 0.0f;
+GLfloat yrot = 0.0f;
+GLfloat zrot = 0.0f;
+ 
+GLuint textures[2];
+ 
+int main() {
+    sf::RenderWindow app(sf::VideoMode(800, 600, 32), "OpenGL Test 1");
+ 
+    gluPerspective(70.f, 1.f, 1.f, 500.f);
+ 
+    ResizeWindow(800, 600);
+    glGenTextures(2, textures);
+    LoadTextures("src/images/test_3d/2.png", 0);
+    LoadTextures("src/images/test_3d/3.png", 1);
+    InitGL();
+ 
+ 
+    while (app.isOpen()) {
+ 
+        sf::Event e{};
+        while (app.pollEvent(e)) {
+            if (e.type == sf::Event::Closed)
+                app.close();
+            if (e.type == sf::Event::KeyPressed && e.key.code == sf::Keyboard::Escape) {
+                app.close();
+            }
+ 
+            else if (e.type == sf::Event::Resized)
+                glViewport(0, 0, e.size.width, e.size.height);
+ 
+            if (e.type == sf::Event::KeyPressed && e.key.code == sf::Keyboard::A) {
+                xrot += __MOVE__;
+            } else if (e.type == sf::Event::KeyPressed && e.key.code == sf::Keyboard::Z) {
+                xrot -= __MOVE__;
+            }
+ 
+            if (e.type == sf::Event::KeyPressed && e.key.code == sf::Keyboard::S) {
+                yrot += __MOVE__;
+            } else if (e.type == sf::Event::KeyPressed && e.key.code == sf::Keyboard::X) {
+                yrot -= __MOVE__;
+            }
+ 
+            if (e.type == sf::Event::KeyPressed && e.key.code == sf::Keyboard::D) {
+                zrot += __MOVE__;
+            } else if (e.type == sf::Event::KeyPressed && e.key.code == sf::Keyboard::C) {
+                zrot -= __MOVE__;
+            }
+        }
+ 
+        DrawScene();
+        app.display();
+    }
+    glDeleteTextures(2, textures);
+ 
+    return 0;
+}
+ 
+void InitGL() {
+    glEnable(GL_TEXTURE_2D);
+    glShadeModel(GL_SMOOTH);
+    glClearColor(0.0f, 0.0f, 0.0f, 0.5f);
+    glClearDepth(1.0f);
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LEQUAL);
+    glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
+}
+ 
+void ResizeWindow(GLsizei width, GLsizei height) {
+    if (height == 0)
+        height = 1;
+ 
+    glViewport(0, 0, width, height);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+ 
+    gluPerspective(45.0f, GLfloat(width) / GLfloat(height), 0.1f, 100.0f);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+}
+ 
+void LoadTextures(const char href[1024], const int &id) {
+    sf::Image img;
+    if (!img.loadFromFile(href))
+        throw 1;
+ 
+    glBindTexture(GL_TEXTURE_2D, textures[id]);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img.getSize().x, img.getSize().y, 0, GL_RGBA, GL_UNSIGNED_BYTE,
+                 img.getPixelsPtr());
+//    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+//    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+}
+ 
+void DrawScene() {
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glEnable(GL_TEXTURE_2D);
+    glLoadIdentity();
+ 
+    glTranslatef(0.0f, 0.0f, -5.0f);
+ 
+    glRotatef(xrot, 1.0f, 0.0f, 0.0f);
+    glRotatef(yrot, 0.0f, 1.0f, 0.0f);
+    glRotatef(zrot, 0.0f, 0.0f, 1.0f);
+ 
+ 
+    glBindTexture(GL_TEXTURE_2D, textures[0]);
+    glBegin(GL_QUADS);
+    {
+        glTexCoord2f(0.0f, 0.0f);
+        glVertex3f(-1.0f, -1.0f, -1.0f);    // Bottom Left Of The Texture and Quad
+ 
+        glTexCoord2f(1.0f, 0.0f);
+        glVertex3f(-1.0f, 1.0f, -1.0f);    // Bottom Right Of The Texture and Quad
+ 
+        glTexCoord2f(1.0f, 1.0f);
+        glVertex3f(1.0f, 1.0f, -1.0f);    // Top Right Of The Texture and Quad
+ 
+        glTexCoord2f(0.0f, 1.0f);
+        glVertex3f(1.0f, -1.0f, -1.0f);    // Top Left Of The Texture and Quad
+    }
+    glEnd();
+ 
+    glBindTexture(GL_TEXTURE_2D, textures[0]);
+    glBegin(GL_QUADS);
+    {
+        glTexCoord2f(1.0f, 0.0f);
+        glVertex3f(-1.f, -1.f, 1.f);
+ 
+        glTexCoord2f(1.0f, 1.0f);
+        glVertex3f(-1.f,  1.f, 1.f);
+ 
+        glTexCoord2f(0.0f, 1.0f);
+        glVertex3f( 1.f,  1.f, 1.f);
+ 
+        glTexCoord2f(0.0f, 0.0f);
+        glVertex3f( 1.f, -1.f, 1.f);
+    }
+    glEnd();
+ 
+    glBindTexture(GL_TEXTURE_2D, textures[0]);
+    glBegin(GL_QUADS);
+    {
+        glTexCoord2f(0.0f, 1.0f);
+        glVertex3f(-1.f, -1.f, -1.f);
+ 
+        glTexCoord2f(0.0f, 0.0f);
+        glVertex3f(-1.f, 1.f, -1.f);
+ 
+        glTexCoord2f(1.0f, 0.0f);
+        glVertex3f(-1.f, 1.f, 1.f);
+ 
+        glTexCoord2f(1.0f, 1.0f);
+        glVertex3f(-1.f, -1.f, 1.f);
+    }
+    glEnd();
+ 
+    glBindTexture(GL_TEXTURE_2D, textures[0]);
+    glBegin(GL_QUADS);
+    {
+        glTexCoord2f(1.0f, 1.0f);
+        glVertex3f(1.f, -1.f, -1.f);
+ 
+        glTexCoord2f(0.0f, 1.0f);
+        glVertex3f(1.f, 1.f, -1.f);
+ 
+        glTexCoord2f(0.0f, 0.0f);
+        glVertex3f(1.f, 1.f, 1.f);
+ 
+        glTexCoord2f(1.0f, 0.0f);
+        glVertex3f(1.f, -1.f, 1.f);
+    }
+    glEnd();
+ 
+    glBindTexture(GL_TEXTURE_2D, textures[0]);
+    glBegin(GL_QUADS);
+    {
+ 
+        glTexCoord2f(1.0f, 0.0f);
+        glVertex3f(-1.f, -1.f, 1.f);
+ 
+        glTexCoord2f(1.0f, 1.0f);
+        glVertex3f(-1.f, -1.f, -1.f);
+ 
+        glTexCoord2f(0.0f, 1.0f);
+        glVertex3f(1.f, -1.f, -1.f);
+ 
+        glTexCoord2f(0.0f, 0.0f);
+        glVertex3f(1.f, -1.f, 1.f);
+    }
+    glEnd();
+ 
+    glBindTexture(GL_TEXTURE_2D, textures[1]);
+    glBegin(GL_QUADS);
+    {
+        glTexCoord2f(0.0f, 0.0f);
+        glVertex3f(-1.f, 1.f,  1.f);
+ 
+        glTexCoord2f(1.0f, 0.0f);
+        glVertex3f(-1.f, 1.f, -1.f);
+ 
+        glTexCoord2f(1.0f, 1.0f);
+        glVertex3f( 1.f, 1.f, -1.f);
+ 
+        glTexCoord2f(0.0f, 1.0f);
+        glVertex3f( 1.f, 1.f,  1.f);
+    }
+    glEnd();
+}

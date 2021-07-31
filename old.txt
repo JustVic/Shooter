@@ -1,0 +1,529 @@
+#include <iostream>
+#include <SFML/Graphics.hpp>
+#include "LibTextures.h"
+#include <vector>
+#include <map>
+#include <cmath>
+#define nullptr 0
+
+#define ANI_MOVE_RIGHT   2
+#define ANI_STANCE_RIGHT 3
+#define ANI_STANCE_TOP   4
+#define ANI_STANCE_DOWN  5
+#define ANI_STANCE_LEFT  6
+#define ANI_MOVE_LEFT    7
+
+#define PAR_TYPE_ID 0
+#define PAR_LEVEL 1
+#define PAR_MOVE_SPEED 2
+#define PAR_MOVE_SPEEDX 3
+#define PAR_MOVE_SPEEDY 4 
+#define PAR_MOVE_DISTANCE 5
+#define PAR_MOVE_POSX 6
+#define PAR_MOVE_POSY 7
+#define PAR_MOVE_ANGLE 8
+
+#define ACTION_NULL   0
+#define ACTION_STANCE 1
+#define ACTION_MOVE   2
+
+
+using namespace std;
+
+// Íà äàííûé ìîìåíò ýòî ìíîãîðàçîâûé òàéìåð
+class TTimer
+{
+private:
+	float m_cur_time;
+	float m_max_time;
+public:	
+	TTimer(float p_max_time) 
+	: m_cur_time(0.0f)
+	, m_max_time(p_max_time)
+	{
+		//		
+	}
+	// Óñòàíàâëèâàåò íîâîåì ìàêñèìàëüíåî âðåìÿ
+	void setMaxTime(float p_value)
+	{
+		m_max_time = p_value;
+	}
+	// Îáíîâëÿåò òàéìåð
+	// TRUE  - òàéìåð çàêîí÷èëñÿ
+	// FALSE - òàéìåð ðàáîòàåò
+	bool update(float p_time)
+	{
+		m_cur_time += p_time;
+		if (m_cur_time >= m_max_time)
+		{
+			m_cur_time -= m_max_time;
+			return true;
+		}
+		return false;
+	}
+};
+
+class TFrame
+{
+private:
+	int           m_texture_id;
+	sf::Texture  *m_texture_ptr;
+	sf::IntRect   m_int_rect;
+	float         m_duration; // Ïðîäîëæèòåëüíîñòü êàäðà [ñåêóíäû]
+public:
+	TFrame(
+		  int     p_texture_id // ID Òåêñòóðû èç "Áèáëèîòåêè Òåêñòóð"
+		, int     p_rect_id    // ID Êâàäðàòà òåêñòóðû èç "Áèáëèîòåêè Òåêñòóð"
+		, float   p_duration   // Ïðîäîëæèòåëüíîñòü êàäðà
+	)
+	{
+		m_texture_id  = p_texture_id;
+		m_texture_ptr = LibTextures::Instance().getTexturePtr(p_texture_id);
+		m_int_rect    = LibTextures::Instance().getIntRect(p_rect_id);
+		m_duration    = p_duration;
+	}
+	~TFrame()
+	{
+		//	
+	}	
+	// Îáíîâèòü ñïðàéò
+	void updateSprite(sf::Sprite *p_sprite)
+	{
+		if (!p_sprite) return;
+		
+		p_sprite->setTexture(*m_texture_ptr);
+		p_sprite->setTextureRect(m_int_rect);
+	}
+	// Âåðíóòü ïðîäîëæèòåëüíîñòü êàäðà
+	float getDuration()
+	{
+		return m_duration;
+	}
+};
+
+class TAnimation
+{
+private:
+	std::vector<TFrame*>   m_vec_frames;
+	int                    m_cur_frame;
+	TTimer                 *m_timer1; // Òàéìåð îòâå÷àþùèé çà ñìåíó êàäðîâ
+public:
+	TAnimation(int p_animation_id) : m_cur_frame(nullptr)
+	{
+		float m_frame_duration = 0.1f;
+		if (p_animation_id == 1)
+		{
+			m_vec_frames.push_back( new TFrame(1, 1,    m_frame_duration) );
+			m_vec_frames.push_back( new TFrame(1, 2,    m_frame_duration) );
+			m_vec_frames.push_back( new TFrame(1, 3,    m_frame_duration) );
+			m_vec_frames.push_back( new TFrame(1, 0, 10*m_frame_duration) );
+			m_vec_frames.push_back( new TFrame(1, 3,    m_frame_duration) );
+			m_vec_frames.push_back( new TFrame(1, 2,    m_frame_duration) );
+			m_vec_frames.push_back( new TFrame(1, 1,    m_frame_duration) );
+		} 
+		else if (p_animation_id == 2)
+		{
+			m_vec_frames.push_back( new TFrame(2, 4, m_frame_duration) );
+			m_vec_frames.push_back( new TFrame(2, 5, m_frame_duration) );
+			m_vec_frames.push_back( new TFrame(2, 6, m_frame_duration) );
+			m_vec_frames.push_back( new TFrame(2, 7, m_frame_duration) );
+			m_vec_frames.push_back( new TFrame(2, 8, m_frame_duration) );
+			m_vec_frames.push_back( new TFrame(2, 9, m_frame_duration) );
+		}
+		// ANI_STANCE_RIGHT
+		else if (p_animation_id == 3)
+		{
+			m_vec_frames.push_back( new TFrame(1, 10, m_frame_duration) );
+			m_vec_frames.push_back( new TFrame(1, 11, m_frame_duration) );
+			m_vec_frames.push_back( new TFrame(1, 12, m_frame_duration) );
+			m_vec_frames.push_back( new TFrame(1, 13, m_frame_duration) );
+		}
+		// ANI_STANCE_TOP
+		else if (p_animation_id == 4)
+		{
+			m_vec_frames.push_back( new TFrame(1, 14, m_frame_duration) );
+			m_vec_frames.push_back( new TFrame(1, 15, m_frame_duration) );
+			m_vec_frames.push_back( new TFrame(1, 16, m_frame_duration) );
+			m_vec_frames.push_back( new TFrame(1, 17, m_frame_duration) );
+		}
+		// ANI_STANCE_DOWN
+		else if (p_animation_id == 5)
+		{
+			m_vec_frames.push_back( new TFrame(1, 18, m_frame_duration) );
+			m_vec_frames.push_back( new TFrame(1, 19, m_frame_duration) );
+			m_vec_frames.push_back( new TFrame(1, 20, m_frame_duration) );
+			m_vec_frames.push_back( new TFrame(1, 21, m_frame_duration) );
+		}
+		// ANI_STANCE_LEFT
+		else if (p_animation_id == 6)
+		{
+			m_vec_frames.push_back( new TFrame(1, 22, m_frame_duration) );
+			m_vec_frames.push_back( new TFrame(1, 23, m_frame_duration) );
+			m_vec_frames.push_back( new TFrame(1, 24, m_frame_duration) );
+			m_vec_frames.push_back( new TFrame(1, 25, m_frame_duration) );
+		}
+		else if (p_animation_id == 7)
+		{
+			m_vec_frames.push_back( new TFrame(2, 26, m_frame_duration) );
+			m_vec_frames.push_back( new TFrame(2, 27, m_frame_duration) );
+			m_vec_frames.push_back( new TFrame(2, 28, m_frame_duration) );
+			m_vec_frames.push_back( new TFrame(2, 29, m_frame_duration) );
+			m_vec_frames.push_back( new TFrame(2, 30, m_frame_duration) );
+			m_vec_frames.push_back( new TFrame(2, 31, m_frame_duration) );
+		}
+		m_timer1 = new TTimer( m_vec_frames[m_cur_frame]->getDuration() );
+		m_cur_frame = 0;
+	}	
+	~TAnimation()
+	{
+		for(int i=0; i<m_vec_frames.size(); ++i)
+			if (m_vec_frames[i])
+				delete m_vec_frames[i];
+	}
+	// Îáíîâëåíèå àíèìàöèè âî âðåìåíè
+	bool update(float p_time)
+	{
+		if (m_timer1->update(p_time))
+		{
+			m_cur_frame += 1;
+			
+			// Ïîêà ÷òî òàê: åñëè àíèìàöèÿ çàêîí÷èëàñü, ïîâòîðÿåì ñíà÷àëà
+			if (m_cur_frame >= m_vec_frames.size())
+			{
+				m_cur_frame = 0;
+			}
+			
+			// Óñòàíàâëèâàåì ñëåäóþùóþ äëèòåëüíîñòü êàäðà àíèìàöèè
+			m_timer1->setMaxTime( m_vec_frames[m_cur_frame]->getDuration() );
+			
+			return true; // Âåðí¸ì ñîîáùåíèå, ÷òî íóæíî îáíîâèòü àíèìàöèþ
+		}
+		return false;
+	}
+	// Îáíîâèòü ñïðàéò
+	void updateSprite(sf::Sprite *p_sprite)
+	{
+		if (!p_sprite) return;
+		
+		m_vec_frames[m_cur_frame]->updateSprite( p_sprite );
+	}
+};
+
+// Íàáîð ïàðàìåòðîâ äëÿ îáúåêòà
+class TParams 
+{
+private:
+	std::map<int, float> m_params;
+public:	
+	TParams() {	}
+	
+	// Óñòàíàâëèâàåò ïàðàìåòð ïî ID
+	void set(const int p_par_id, float p_par_value)
+	{
+		m_params[p_par_id] = p_par_value;
+	}
+	
+	// Âåðí¸ò çíà÷åíèå ïàðàìåòðà
+	// 0.0f - åñëè ïàðàìåòð íå íàéäåí
+	float get(int p_par_id)
+	{
+		return m_params[p_par_id];
+	}
+};
+
+class TTestUnit : public sf::Sprite
+{
+	//...
+	TAnimation *m_cur_animation; // Óêàçàòåëü íà òåêóùóþ àíèìàöèþ
+	TAnimation *m_ani_run;       // Àíèìàöèÿ áåãà
+	TParams    *m_params;        // Ïàðàìåòðû ïåðñîíàæà
+	
+	int        m_action_id;      // ID òåêóùåãî äåéñòâèÿ
+//	int        m_next_action_id; // ID ñëåäóþùåãî äåéñòâèÿ
+public:
+	TTestUnit() 
+	: m_cur_animation(nullptr)
+	, m_ani_run(nullptr)
+	, m_params(nullptr)
+	, m_action_id(ACTION_NULL)
+	{
+		//m_ani_run = new TAnimation(2);
+		
+		m_params = new TParams();
+		m_params->set(PAR_MOVE_SPEED, 100.0f); // Óñòàíàâëèâàåì ñêîðîñòü
+	}
+	~TTestUnit()
+	{
+		if (m_cur_animation)
+			delete m_cur_animation;
+		if (m_ani_run)
+			delete m_ani_run;
+		if (m_params)
+			delete m_params;
+	}
+	// Îáúåêò ðèñóåò ñàì ñåáÿ
+	void draw(sf::RenderWindow &p_window)
+	{
+		p_window.draw(*this);
+	}
+	// Ïîâåäåíèå
+	void behavior(float p_time)
+	{
+		// Ñòîÿíèå
+		if (m_action_id == ACTION_STANCE) 
+		{
+			
+		}
+		// Ïåðåìåùåíèå
+		else if (m_action_id == ACTION_MOVE)
+		{
+			// Ïîëó÷àåì íóæíûå ïàðàìåòðû
+			float v_speed   = m_params->get(PAR_MOVE_SPEED);
+			float v_speed_x = m_params->get(PAR_MOVE_SPEEDX);
+			float v_speed_y = m_params->get(PAR_MOVE_SPEEDY);
+			float v_dist    = m_params->get(PAR_MOVE_DISTANCE);
+			float v_pos_x   = m_params->get(PAR_MOVE_POSX);
+			float v_pos_y   = m_params->get(PAR_MOVE_POSY);
+			
+			if (v_dist >= v_speed * p_time)
+			{
+				v_dist -= v_speed * p_time;
+				move(v_speed_x * p_time, v_speed_y * p_time);
+			}
+			else
+			{
+				v_dist = 0.0f;
+				setPosition(v_pos_x, v_pos_y);
+				setNewAction(ACTION_STANCE); // Ñòîÿòü	
+			}
+			m_params->set(PAR_MOVE_DISTANCE, v_dist);
+		}
+		
+		// Èãðàåì àíèìàöèþ
+		if (m_cur_animation && m_cur_animation->update(p_time))
+		{
+			m_cur_animation->updateSprite(this);
+		}
+	}
+	void setAnimationById(int p_animation_id)
+	{
+		m_cur_animation = new TAnimation(p_animation_id);
+		m_cur_animation->updateSprite(this);
+	}
+	void moveToPoint(sf::Vector2f &p_pos)
+	{
+		float v_speed = m_params->get(PAR_MOVE_SPEED);
+		sf::Vector2f m_pos = getPosition();
+		
+		cout << "p_pos.x = " << p_pos.x << ':' << p_pos.y 
+		     << ", m_pos.y = " << m_pos.x << ':' << m_pos.y << endl;
+		     
+		float v_dx = p_pos.x - m_pos.x;
+		float v_dy = p_pos.y - m_pos.y;
+		float v_dist = sqrt(v_dx*v_dx + v_dy*v_dy);
+		float v_speed_x = v_speed * v_dx / v_dist;
+		float v_speed_y = v_speed * v_dy / v_dist; 
+		float v_angle = atan2(v_dy, v_dx) * 180.0f / 3.1415f;
+		
+		cout << "v_angle = " << v_angle << endl;
+ 		
+		m_params->set(PAR_MOVE_SPEEDX, v_speed_x);
+		m_params->set(PAR_MOVE_SPEEDY, v_speed_y);
+		m_params->set(PAR_MOVE_DISTANCE, v_dist);
+		m_params->set(PAR_MOVE_POSX, p_pos.x);
+		m_params->set(PAR_MOVE_POSY, p_pos.y);	
+		m_params->set(PAR_MOVE_ANGLE, v_angle);		
+		
+		cout << "speed = " << v_speed_x << ':' << v_speed_y << endl << endl;
+		
+		setNewAction(ACTION_MOVE);
+	}
+	
+	// Óñòàíîâèòü íîâîå äåéñòâèå äëÿ îáúåêòà êîíòðîëÿ
+	void setNewAction(int p_action_id)
+	{
+		// Åñëè èìååòñÿ ïðàâî íà èçìåíåíèå ýòîãî äåéñòâèÿ
+		if (isRightAction(p_action_id))
+		{
+			// Ñáðàñûâàåì ïðåäûäóùåå äåéñòâèå
+			resetCurrentAction();
+			// ìåíÿåì òåêóùåå äåéñòâèå íà íîâîå
+			m_action_id = p_action_id;
+			
+			
+			if (m_action_id == ACTION_MOVE)
+			{
+				float v_angle = m_params->get(PAR_MOVE_ANGLE);
+				
+				if (-90.0f < v_angle && v_angle < 90.0f)
+				{
+					setAnimationById(ANI_MOVE_RIGHT); 
+				}
+				else
+				{
+					setAnimationById(ANI_MOVE_LEFT); 
+				}
+			}
+			else if (m_action_id == ACTION_STANCE)
+			{
+				float v_angle = m_params->get(PAR_MOVE_ANGLE);
+				
+				if (-135.0f < v_angle && v_angle < -45.0f)
+				{
+					setAnimationById(ANI_STANCE_TOP); 
+				}
+				if (-45.0f < v_angle && v_angle < 45.0f)
+				{
+					setAnimationById(ANI_STANCE_RIGHT); 
+				}
+				else if (45.0f < v_angle && v_angle < 135.0f)
+				{
+					setAnimationById(ANI_STANCE_DOWN); 
+				}
+				else
+				{
+					setAnimationById(ANI_STANCE_LEFT); 
+				}
+			}
+		}	
+	}
+	
+	// Ñáðîñèòü òåêóùåå äåéñòâèå 
+	// Âîçìîæíû âàðèàíòû, êîãäà ÷òî-òî ïåðñîíàæ äîëæåí ñäåëàòü, äî òîãî êàê äåéñòâèå çàêîí÷èòüñÿ
+	void resetCurrentAction()
+	{
+		//...
+	}
+	
+	// Åñòü ëè ïðàâî íà äåéñâèå?
+	bool isRightAction(int p_action_id)
+	{
+		// Åñëè ID äåéñòâèÿ - äâèæåíèå, òî ðàçðåøåíèå åñòü
+		if (   p_action_id == ACTION_NULL
+			|| p_action_id == ACTION_STANCE
+		//  || p_action_id == ACTION_TEST // Ïðèìåð òîãî, äëÿ ÷åãî óðîäóåì êîä
+			|| p_action_id == ACTION_MOVE
+		)
+		{
+			return true;
+		}
+		
+		cout << "WARNING: TTestUnit::isRightAction(int p_action_id = " 
+		     << p_action_id 
+			 << ") - äåéñòâèå íå ïðåäóñìîòðåíî àëãîðèòìîì, ïîýòîìó çàïðåùåíî!";
+		
+		return false;
+	}
+};
+
+int main()
+{
+	// Íàñòðîéêè ñðåäû
+	setlocale(LC_ALL, "Russian"); // Ðóññêèé ÿçûê â êîíñîëè
+	
+	// Òåñòîâûé ïåðñîíàæ
+	TTestUnit *v_test_unit = new TTestUnit();
+	v_test_unit->setAnimationById(6); // Áåã
+	//v_test_unit->setScale(3.0f, 3.0f);
+	v_test_unit->setPosition(280.0f, 200.0f);
+	
+	// Íàáðîñêè àíèìàöèè ïåðñîíàæåé ïðè áåãå è ñòîÿíèè íà ìåñòå
+	// íó êîðî÷å äà)
+	// äî ýòîãî? èëè ñåé÷àñ
+	// ààà, ïîí
+	// Òèïà ëåòàþùåé ïòè÷êè? (ó íåãî)
+	// íå, íå âèäåë
+	// Íó, ÿ êàê-ðàç çàêðîþ ÷àñòü îòðàáîòêè àíèìàöèè
+	// À ÿ äàæå çåìëþ ïîêà íå ïëàíèðîâàë
+	// ×ÒÎ çà ôèðìà?
+	
+	// ß åù¸ íå äåëàë âî òàêèå "òèïà-3d" (ïðî Doom)
+	
+	// Íó, êàðòèíêè òî âû íàðèñóåòå
+	// ìåõàíèêà íå ñèëüíî îòëè÷àåòñÿ îò ïåðåìåùåíèÿ ïåðñîíàæà
+	// à, ÿ âèäåë, òàì ìîæíî êðóòèòü (èãðà íà âûæèâàíèå)
+	// À åù¸ ìîæíî ëåñ ïîäæå÷ü èëè ñòàòü áîáðîì
+	
+	// Èíòåðåñíàÿ òàêòèêà - âçÿòü îðèåíòèð íà èíòåðåñóû ñòóäèè Ãàéäæèí
+	// òîëüêî SfmL (ãðàôèêà, çâóê, øðèôòû)
+	
+	///////////////////////////////////////////////////////////////////////
+	// Âàæíûå îáúåêòû SFML
+	///////////////////////////////////////////////////////////////////////
+	// Îêíî
+	sf::RenderWindow window(sf::VideoMode(640,480), "DSLServer");
+	// Âðåìÿ
+	sf::Clock clock;
+	clock.restart();
+	float v_time = 0.0f;
+	// Ìûøêà
+	sf::Vector2f v_mouse_pos;
+	bool v_mouse[5];
+	for (int i=0; i<5; ++i)
+		v_mouse[i] = false;
+	// Êëàâèàòóðà
+	bool v_keys[101];
+	for (int i=0; i<101; ++i)
+		v_keys[i] = false;
+	///////////////////////////////////////////////////////////////////////
+	
+	while (window.isOpen())
+	{
+		v_time = clock.getElapsedTime().asSeconds();
+		clock.restart();
+		sf::Event event;
+		while (window.pollEvent(event))
+		{
+			if (event.type == sf::Event::Closed)
+			{
+				window.close();
+			}
+			else if (event.type == sf::Event::MouseWheelMoved)
+	        {
+	        	int v_delta = event.mouseWheel.delta;
+	        	//  1 - ââåðõ
+	        	// -1 - âíèç
+	        	cout << v_delta << endl;
+			}
+	        else if (event.type == sf::Event::MouseButtonPressed)
+	        {
+	        	//Îòðàáîòêà
+	        	
+	        	// Çàïîëíÿåì ñîñòîÿíèå êíîïêè êàê çàæàòîå
+	        	v_mouse[event.mouseButton.button] = true;
+			}
+	        else if (event.type == sf::Event::MouseButtonReleased)
+	        {
+	        	// Îòæàòèå ÏÊÌ
+	        	if (event.mouseButton.button == sf::Mouse::Right)
+	        	{
+	        		//cout << "Îòæàòèå ÏÊÌ" << endl;
+	        		if (v_test_unit)
+					{
+	        			v_test_unit->moveToPoint(v_mouse_pos);	
+					}	
+				}
+	        	// Çàïîëíÿåì ñîñòîÿíèå êíîïêè êàê íå íàæàòàÿ
+	        	v_mouse[event.mouseButton.button] = false;
+			}
+			else if (event.type == sf::Event::MouseMoved)
+			{
+				// Êîîðäèíàòû ìûøè â îêíå
+				//cout << event.mouseMove.x << ':' << event.mouseMove.y << endl;
+				v_mouse_pos.x = event.mouseMove.x;
+				v_mouse_pos.y = event.mouseMove.y;
+			}
+		}
+		
+		v_test_unit->behavior(v_time);
+		
+		window.clear(sf::Color::White);
+		v_test_unit->draw(window);
+		window.display();
+	}
+	
+	if (v_test_unit)
+		delete v_test_unit;
+	
+	return 0;
+}
